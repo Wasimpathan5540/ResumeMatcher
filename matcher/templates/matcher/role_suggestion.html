@@ -1,0 +1,353 @@
+{% extends "matcher/base.html" %}
+
+{% block title %}AI Role Suggestions | Resume Matcher{% endblock %}
+
+{% block content %}
+
+<style>
+    /* --- PAGE HEADER & HERO --- */
+    .hero-container {
+        text-align: center;
+        max-width: 800px;
+        margin: 0 auto 40px auto;
+    }
+
+    .hero-title {
+        font-size: 2.5rem;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        margin-bottom: 15px;
+        background: linear-gradient(135deg, var(--text-main) 0%, var(--primary) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .hero-subtitle {
+        font-size: 1.1rem;
+        color: var(--text-muted);
+        line-height: 1.6;
+    }
+
+    /* --- INPUT SECTION (The "Prompt" Box) --- */
+    .search-card {
+        background: white;
+        max-width: 900px;
+        margin: 0 auto 50px auto;
+        padding: 30px;
+        border-radius: 20px;
+        box-shadow: var(--shadow-lg);
+        border: 1px solid #e2e8f0;
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* Decorative top border */
+    .search-card::before {
+        content: "";
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 6px;
+        background: linear-gradient(to right, #6366f1, #a855f7);
+    }
+
+    /* Form Styles */
+    form p { margin-bottom: 20px; }
+    
+    form label {
+        display: block;
+        font-weight: 700;
+        margin-bottom: 10px;
+        color: var(--text-main);
+        font-size: 0.95rem;
+    }
+
+    form textarea, 
+    form input[type="text"] {
+        width: 100%;
+        padding: 16px;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        font-size: 1rem;
+        font-family: inherit;
+        background-color: #f8fafc;
+        transition: all 0.2s ease;
+        resize: vertical;
+        min-height: 120px; /* Good height for resume paste */
+    }
+
+    form textarea:focus,
+    form input[type="text"]:focus {
+        border-color: var(--primary);
+        background-color: #fff;
+        outline: none;
+        box-shadow: 0 0 0 4px var(--primary-glow);
+    }
+
+    .btn-analyze {
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        color: white;
+        border: none;
+        padding: 16px 32px;
+        font-size: 1.1rem;
+        font-weight: 700;
+        border-radius: 12px;
+        cursor: pointer;
+        width: 100%;
+        transition: transform 0.2s, box-shadow 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        margin-top: 10px;
+    }
+
+    .btn-analyze:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(79, 70, 229, 0.3);
+    }
+
+    /* --- RESULTS GRID --- */
+    .results-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+        gap: 25px;
+    }
+
+    .role-card {
+        background: white;
+        border-radius: 16px;
+        border: 1px solid #f1f5f9;
+        box-shadow: var(--shadow-md);
+        overflow: hidden;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .role-card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--shadow-lg);
+        border-color: #cbd5e1;
+    }
+
+    /* Card Header */
+    .role-header {
+        padding: 20px 25px;
+        border-bottom: 1px solid #f1f5f9;
+        background: #f8fafc;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .role-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--text-main);
+        line-height: 1.3;
+    }
+
+    .match-score {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-weight: 800;
+        font-size: 0.9rem;
+        white-space: nowrap;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .score-high { color: #059669; border-color: #a7f3d0; background: #ecfdf5; }
+    .score-med  { color: #d97706; border-color: #fde68a; background: #fffbeb; }
+    .score-low  { color: #dc2626; border-color: #fecaca; background: #fef2f2; }
+
+    /* Card Body */
+    .role-body {
+        padding: 25px;
+        flex-grow: 1;
+    }
+
+    /* Split Analysis (Matched vs Missing) */
+    .analysis-split {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+
+    .analysis-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .group-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-weight: 700;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .pill-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .pill {
+        font-size: 0.8rem;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-weight: 600;
+    }
+
+    .pill-match { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+    .pill-miss  { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+
+    .role-desc {
+        font-size: 0.9rem;
+        color: #64748b;
+        line-height: 1.6;
+        padding-top: 15px;
+        border-top: 1px solid #f1f5f9;
+        margin-top: auto;
+    }
+
+    /* Tech Stack Line */
+    .tech-stack-line {
+        font-family: 'Courier New', monospace;
+        font-size: 0.8rem;
+        color: #6366f1;
+        background: #eef2ff;
+        padding: 8px;
+        border-radius: 6px;
+        margin-bottom: 15px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* Error Banner */
+    .error-box {
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        color: #b91c1c;
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    /* Empty State */
+    .empty-suggestions {
+        text-align: center;
+        padding: 60px;
+        color: #94a3b8;
+    }
+</style>
+
+<div class="hero-container">
+    <h1 class="hero-title">AI Career Pathfinder</h1>
+    <p class="hero-subtitle">
+        Not sure which role fits you best? Paste your resume skills or summary below. 
+        Our AI will cross-reference your profile with job market data to find your strongest matches and identify skill gaps.
+    </p>
+</div>
+
+<div class="search-card">
+    {% if error_message %}
+        <div class="error-box">
+            <i class="fas fa-exclamation-circle"></i> {{ error_message }}
+        </div>
+    {% endif %}
+
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        
+        <button type="submit" class="btn-analyze">
+            <i class="fas fa-magic"></i> Analyze & Find Roles
+        </button>
+    </form>
+</div>
+
+{% if suggestions %}
+    <div style="margin-bottom: 20px; text-align: center;">
+        <h2 style="font-size: 1.5rem; color: var(--text-main);">Top Recommendations</h2>
+        <p style="color: var(--text-muted);">Based on your input skills</p>
+    </div>
+
+    <div class="results-grid">
+        {% for job in suggestions %}
+            <div class="role-card">
+                <div class="role-header">
+                    <div class="role-title">{{ job.job_title }}</div>
+                    <div class="match-score {% if job.score > 80 %}score-high{% elif job.score > 50 %}score-med{% else %}score-low{% endif %}">
+                        {{ job.score }}% Match
+                    </div>
+                </div>
+
+                <div class="role-body">
+                    
+                    {% if job.it_skills %}
+                    <div class="tech-stack-line" title="{{ job.it_skills }}">
+                        <i class="fas fa-code"></i> {{ job.it_skills }}
+                    </div>
+                    {% endif %}
+
+                    <div class="analysis-split">
+                        <div class="analysis-group">
+                            <div class="group-label" style="color:#166534;">
+                                <i class="fas fa-check-circle"></i> Your Strengths
+                            </div>
+                            {% if job.present_skills %}
+                                <div class="pill-container">
+                                    {% for s in job.present_skills %}
+                                        <span class="pill pill-match">{{ s }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <span style="font-size:0.85rem; color:#94a3b8; font-style:italic;">No direct skill matches found in input.</span>
+                            {% endif %}
+                        </div>
+
+                        <div class="analysis-group">
+                            <div class="group-label" style="color:#b91c1c;">
+                                <i class="fas fa-arrow-up"></i> Growth Opportunities
+                            </div>
+                            {% if job.missing_skills %}
+                                <div class="pill-container">
+                                    {% for s in job.missing_skills %}
+                                        <span class="pill pill-miss">{{ s }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <span style="font-size:0.85rem; color:#166534; font-weight:600;">You are a perfect fit!</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="role-desc">
+                        {{ job.job_description|truncatechars:150 }}
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+{% elif not error_message and not suggestions %}
+    <div class="empty-suggestions">
+        <i class="fas fa-robot" style="font-size: 3rem; margin-bottom: 20px; opacity: 0.3;"></i>
+        <h3>Ready to Explore?</h3>
+        <p>Enter your details above to start the AI analysis.</p>
+    </div>
+{% endif %}
+
+{% endblock %}

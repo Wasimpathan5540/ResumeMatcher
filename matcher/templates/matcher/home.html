@@ -1,0 +1,497 @@
+{% extends "matcher/base.html" %}
+
+{% block title %}Smart Job Match | Resume Matcher{% endblock %}
+
+{% block content %}
+
+<style>
+    /* --- PAGE LAYOUT --- */
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: 360px 1fr;
+        gap: 32px;
+        align-items: start;
+    }
+
+    /* --- SIDEBAR (CONTROL PANEL) --- */
+    .sidebar-panel {
+        background: white;
+        padding: 24px;
+        border-radius: 16px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        position: sticky;
+        top: 100px; /* Below navbar */
+        max-height: calc(100vh - 120px);
+        overflow-y: auto;
+    }
+
+    /* Custom Scrollbar for sidebar */
+    .sidebar-panel::-webkit-scrollbar { width: 6px; }
+    .sidebar-panel::-webkit-scrollbar-track { background: transparent; }
+    .sidebar-panel::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+    .panel-header {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--text-main);
+        margin-bottom: 20px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    /* --- FORM STYLING --- */
+    form p { margin-bottom: 16px; }
+    
+    form label {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        margin-bottom: 6px;
+    }
+
+    form input[type="text"],
+    form textarea,
+    form select {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        font-family: inherit;
+        font-size: 0.9rem;
+        background: #f8fafc;
+        transition: all 0.2s;
+    }
+
+    form input:focus,
+    form textarea:focus {
+        outline: none;
+        border-color: var(--primary);
+        background: #fff;
+        box-shadow: 0 0 0 3px var(--primary-glow);
+    }
+
+    form input[type="file"] {
+        font-size: 0.85rem;
+        width: 100%;
+        padding: 8px;
+        background: #f1f5f9;
+        border: 1px dashed #cbd5e1;
+        border-radius: 8px;
+        color: var(--text-muted);
+        cursor: pointer;
+    }
+
+    .btn-submit {
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        color: white;
+        border: none;
+        padding: 12px;
+        width: 100%;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        margin-top: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .btn-submit:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+    }
+
+    /* --- SIDEBAR WIDGETS --- */
+    .widget-card {
+        margin-top: 24px;
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: 16px;
+        border: 1px solid #e2e8f0;
+    }
+
+    .widget-title {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-weight: 700;
+        color: var(--text-muted);
+        margin-bottom: 12px;
+        display: flex;
+        justify-content: space-between;
+    }
+
+    /* Score Widget */
+    .mini-score {
+        text-align: center;
+        padding: 10px;
+        background: white;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        box-shadow: var(--shadow-sm);
+    }
+    .mini-score-val {
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: var(--primary);
+        line-height: 1;
+    }
+    .mini-score-label {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        font-weight: 600;
+    }
+
+    /* Breakdown Widget (Progress Bars) */
+    .breakdown-row {
+        margin-bottom: 10px;
+    }
+    .breakdown-label {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.8rem;
+        color: #475569;
+        margin-bottom: 4px;
+        font-weight: 500;
+    }
+    .bar-bg {
+        width: 100%;
+        height: 6px;
+        background: #e2e8f0;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    .bar-fill {
+        height: 100%;
+        border-radius: 10px;
+        background: linear-gradient(90deg, #60a5fa, var(--primary));
+        transition: width 1s ease-out;
+    }
+
+    /* Summary & Tips */
+    .summary-item {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.85rem;
+        margin-bottom: 6px;
+        padding-bottom: 6px;
+        border-bottom: 1px dashed #e2e8f0;
+    }
+    .summary-item:last-child { border: none; margin: 0; padding: 0; }
+    
+    .tips-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    .tips-list li {
+        position: relative;
+        padding-left: 14px;
+        margin-bottom: 8px;
+        font-size: 0.85rem;
+        color: #475569;
+        line-height: 1.4;
+    }
+    .tips-list li::before {
+        content: "•";
+        color: var(--primary);
+        position: absolute;
+        left: 0;
+        font-weight: bold;
+    }
+
+    /* --- RESULTS GRID --- */
+    .results-header {
+        margin-bottom: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .results-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+        gap: 24px;
+    }
+
+    .job-card {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: var(--shadow-sm);
+        transition: all 0.2s ease;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+
+    .job-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-lg);
+        border-color: #cbd5e1;
+    }
+
+    .job-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 16px;
+        gap: 12px;
+    }
+
+    .job-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--text-main);
+        line-height: 1.3;
+    }
+
+    /* Badge */
+    .score-badge {
+        background: #f1f5f9;
+        color: #475569;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+    .high-match { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+    .med-match { background: #fef9c3; color: #854d0e; border: 1px solid #fde68a; }
+
+    /* Skills Section */
+    .skills-block {
+        margin-bottom: 12px;
+    }
+    .skills-title {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        color: #94a3b8;
+        font-weight: 700;
+        margin-bottom: 6px;
+    }
+    
+    .tags-wrapper {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .tag {
+        font-size: 0.75rem;
+        padding: 3px 8px;
+        border-radius: 6px;
+        font-weight: 600;
+    }
+    .tag-match { background: #eff6ff; color: #2563eb; }
+    .tag-miss { background: #fef2f2; color: #dc2626; opacity: 0.85; }
+
+    .job-desc {
+        margin-top: auto;
+        padding-top: 15px;
+        border-top: 1px solid #f1f5f9;
+        font-size: 0.9rem;
+        color: #64748b;
+        line-height: 1.5;
+    }
+
+    /* Empty State */
+    .empty-state {
+        grid-column: 1 / -1;
+        text-align: center;
+        padding: 60px;
+        background: white;
+        border-radius: 16px;
+        border: 2px dashed #e2e8f0;
+        color: #94a3b8;
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+        .dashboard-grid { grid-template-columns: 1fr; }
+        .sidebar-panel { position: static; margin-bottom: 30px; max-height: none; }
+    }
+</style>
+
+<div class="page-header" style="margin-bottom: 30px;">
+    <h1>Smart Job Match</h1>
+    <p style="color:var(--text-muted);">Compare your resume against our database to find the best fit.</p>
+</div>
+
+<div class="dashboard-grid">
+
+    <aside class="sidebar-panel">
+        <div class="panel-header">
+            <i class="fas fa-sliders-h" style="color:var(--primary);"></i> Match Settings
+        </div>
+
+        {% if error_message %}
+            <div style="background:#fee2e2; color:#b91c1c; padding:10px; border-radius:8px; margin-bottom:15px; font-size:0.9rem;">
+                {{ error_message }}
+            </div>
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="btn-submit">
+                <i class="fas fa-search"></i> Analyze Resume
+            </button>
+        </form>
+
+        {% if direct_score %}
+            <div class="widget-card">
+                <div class="widget-title">Overall Score</div>
+                <div class="mini-score">
+                    <div class="mini-score-val">{{ direct_score }}%</div>
+                    <div class="mini-score-label">Compatibility</div>
+                </div>
+            </div>
+        {% endif %}
+
+        {% if score_breakdown %}
+            <div class="widget-card">
+                <div class="widget-title">Score Analysis</div>
+                
+                <div class="breakdown-row">
+                    <div class="breakdown-label">
+                        <span>Skill Coverage</span>
+                        <span>{{ score_breakdown.skills_coverage }}%</span>
+                    </div>
+                    <div class="bar-bg">
+                        <div class="bar-fill" style="width: {{ score_breakdown.skills_coverage }}%;"></div>
+                    </div>
+                </div>
+
+                <div class="breakdown-row">
+                    <div class="breakdown-label">
+                        <span>Resume Length Quality</span>
+                        <span>{{ score_breakdown.length_score }}%</span>
+                    </div>
+                    <div class="bar-bg">
+                        <div class="bar-fill" style="width: {{ score_breakdown.length_score }}%;"></div>
+                    </div>
+                </div>
+
+                <div class="breakdown-row">
+                    <div class="breakdown-label">
+                        <span>Projects Impact</span>
+                        <span>{{ score_breakdown.projects_score }}%</span>
+                    </div>
+                    <div class="bar-bg">
+                        <div class="bar-fill" style="width: {{ score_breakdown.projects_score }}%;"></div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+        {% if resume_summary %}
+            <div class="widget-card">
+                <div class="widget-title">Profile Snapshot</div>
+                <div class="summary-item">
+                    <span style="color:#64748b;">Detected Role</span>
+                    <span style="font-weight:600; color:var(--text-main);">{{ resume_summary.suggested_role }}</span>
+                </div>
+                <div class="summary-item">
+                    <span style="color:#64748b;">Word Count</span>
+                    <span>{{ resume_summary.word_count }} words</span>
+                </div>
+                {% if resume_summary.matched_skills %}
+                    <div style="margin-top:10px;">
+                        <span style="font-size:0.75rem; color:#64748b;">Top Skills Found:</span>
+                        <div class="tags-wrapper" style="margin-top:4px;">
+                            {% for skill in resume_summary.matched_skills|slice:":5" %}
+                                <span class="tag" style="background:white; border:1px solid #cbd5e1; color:#475569;">{{ skill }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        {% endif %}
+
+        {% if improvement_tips %}
+            <div class="widget-card">
+                <div class="widget-title">AI Suggestions</div>
+                <ul class="tips-list">
+                    {% for tip in improvement_tips %}
+                        <li>{{ tip }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+
+    </aside>
+
+
+    <main>
+        {% if dataset_matches %}
+            <div class="results-header">
+                <h2 style="font-size:1.2rem; font-weight:700;">Top Job Matches ({{ dataset_matches|length }})</h2>
+            </div>
+
+            <div class="results-grid">
+                {% for job in dataset_matches %}
+                    <div class="job-card">
+                        <div class="job-header">
+                            <div class="job-title">{{ job.job_title }}</div>
+                            <div class="score-badge {% if job.score > 75 %}high-match{% elif job.score > 50 %}med-match{% endif %}">
+                                {{ job.score }}%
+                            </div>
+                        </div>
+
+                        {% if job.matched_skills %}
+                            <div class="skills-block">
+                                <div class="skills-title">Matched Skills</div>
+                                <div class="tags-wrapper">
+                                    {% for skill in job.matched_skills|slice:":5" %}
+                                        <span class="tag tag-match">✓ {{ skill }}</span>
+                                    {% endfor %}
+                                    {% if job.matched_skills|length > 5 %}
+                                        <span class="tag" style="background:#f1f5f9; color:#94a3b8;">+{{ job.matched_skills|length|add:"-5" }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endif %}
+
+                        {% if job.missing_skills %}
+                            <div class="skills-block">
+                                <div class="skills-title">Missing</div>
+                                <div class="tags-wrapper">
+                                    {% for skill in job.missing_skills|slice:":3" %}
+                                        <span class="tag tag-miss">! {{ skill }}</span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% endif %}
+
+                        <div style="font-size:0.8rem; color:#64748b; margin-top:8px;">
+                            <i class="fas fa-layer-group"></i> {{ job.it_skills|truncatechars:40 }}
+                        </div>
+
+                        <div class="job-desc">
+                            {{ job.job_description|truncatechars:130 }}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+
+        {% else %}
+            <div class="empty-state">
+                <i class="fas fa-file-upload" style="font-size: 3rem; margin-bottom: 15px; opacity: 0.3;"></i>
+                <h3>Ready to Match</h3>
+                <p>Upload your resume and enter a job title to see how you rank against our database.</p>
+            </div>
+        {% endif %}
+    </main>
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,17 @@
+# Virtual environment
+venv/
+
+# Django
+db.sqlite3
+__pycache__/
+*.pyc
+
+# ML models
+*.pkl
+
+# Environment
+.env
+
+# IDE
+.vscode/
+.idea/

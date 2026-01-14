@@ -1,0 +1,321 @@
+{% extends "matcher/base.html" %}
+
+{% block title %}Eligibility Audit | Resume Matcher{% endblock %}
+
+{% block content %}
+
+<style>
+    /* --- 1. PAGE LAYOUT --- */
+    .audit-grid {
+        display: grid;
+        grid-template-columns: 380px 1fr;
+        gap: 40px;
+        align-items: start;
+    }
+
+    /* --- 2. SIDEBAR INPUT (THE CONTROL PANEL) --- */
+    .control-panel {
+        background: var(--surface);
+        padding: 32px;
+        border-radius: 16px;
+        border: 1px solid #f1f5f9;
+        box-shadow: var(--shadow-lg);
+        position: sticky;
+        top: 100px;
+    }
+
+    .panel-header {
+        margin-bottom: 24px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .panel-header h3 {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--text-main);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    /* Form Design */
+    form p { margin-bottom: 20px; }
+    
+    form label {
+        display: block;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        margin-bottom: 8px;
+    }
+
+    form input[type="text"],
+    form textarea,
+    form select {
+        width: 100%;
+        padding: 12px 16px;
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+        font-family: 'Inter', sans-serif;
+        font-size: 0.95rem;
+        background: #f8fafc;
+        transition: all 0.2s;
+    }
+
+    form input:focus, form textarea:focus {
+        outline: none;
+        border-color: var(--primary);
+        background: #fff;
+        box-shadow: 0 0 0 4px var(--primary-glow);
+    }
+
+    form input[type="file"] {
+        width: 100%;
+        padding: 12px;
+        background: #f8fafc;
+        border: 1px dashed #cbd5e1;
+        border-radius: 10px;
+        font-size: 0.85rem;
+        cursor: pointer;
+    }
+
+    .btn-audit {
+        width: 100%;
+        padding: 16px;
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        margin-top: 10px;
+    }
+
+    .btn-audit:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 20px -5px rgba(79, 70, 229, 0.4);
+    }
+
+    /* --- 3. AUDIT REPORT --- */
+    .report-card {
+        background: var(--surface);
+        border-radius: 20px;
+        border: 1px solid #f1f5f9;
+        box-shadow: var(--shadow-lg);
+        overflow: hidden;
+    }
+
+    /* Report Banner */
+    .report-banner {
+        background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%);
+        padding: 40px;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+    }
+
+    .job-title-group h2 {
+        font-size: 2rem;
+        font-weight: 800;
+        color: var(--text-main);
+        letter-spacing: -0.02em;
+    }
+
+    .job-meta-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 14px;
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 50px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: var(--text-muted);
+        margin-top: 10px;
+    }
+
+    /* Score Indicator */
+    .score-hero {
+        text-align: right;
+    }
+
+    .score-circle {
+        font-size: 3.5rem;
+        font-weight: 800;
+        color: var(--primary);
+        line-height: 1;
+    }
+
+    .score-tag {
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #64748b;
+        letter-spacing: 0.1em;
+    }
+
+    /* --- 4. BODY SECTIONS --- */
+    .report-content { padding: 40px; }
+
+    .audit-section { margin-bottom: 40px; }
+
+    .audit-section h4 {
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--text-muted);
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .audit-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .pill {
+        padding: 8px 16px;
+        border-radius: 10px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .pill-success { background: #f0fdf4; color: #16a34a; border: 1px solid #dcfce7; }
+    .pill-warning { background: #fffcf0; color: #d97706; border: 1px solid #fef3c7; }
+
+    /* Technical Snippets */
+    .tech-snippet {
+        background: #0f172a;
+        color: #94a3b8;
+        padding: 20px;
+        border-radius: 12px;
+        font-family: 'Courier New', monospace;
+        font-size: 0.9rem;
+        line-height: 1.6;
+        border-left: 4px solid var(--primary);
+    }
+
+    /* Empty UI */
+    .empty-ui {
+        padding: 100px 40px;
+        text-align: center;
+        border: 2px dashed #e2e8f0;
+        border-radius: 20px;
+        color: #94a3b8;
+    }
+
+    .empty-ui i { font-size: 4rem; margin-bottom: 20px; color: #cbd5e1; }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+        .audit-grid { grid-template-columns: 1fr; }
+        .control-panel { position: static; margin-bottom: 30px; }
+        .report-banner { flex-direction: column; align-items: flex-start; gap: 30px; }
+    }
+</style>
+
+<div class="audit-grid">
+    
+    <aside class="control-panel">
+        <div class="panel-header">
+            <h3><i class="fas fa-clipboard-check"></i> Eligibility Audit</h3>
+        </div>
+        
+        {% if error_message %}
+            <div style="background:#fef2f2; color:#ef4444; padding:12px; border-radius:10px; margin-bottom:20px; border:1px solid #fecaca; font-size:0.9rem;">
+                <i class="fas fa-exclamation-circle"></i> {{ error_message }}
+            </div>
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="btn-audit">Run Compatibility Scan</button>
+        </form>
+    </aside>
+
+    <main>
+        {% if eligibility %}
+            <div class="report-card">
+                <div class="report-banner">
+                    <div class="job-title-group">
+                        <h2>{{ eligibility.job_title }}</h2>
+                        <div class="job-meta-pill">
+                            <i class="fas fa-user-clock"></i> 
+                            Requirement: <strong>{{ eligibility.experience }}</strong>
+                        </div>
+                    </div>
+                    
+                    <div class="score-hero">
+                        <div class="score-tag">Match Confidence</div>
+                        <div class="score-circle">{{ eligibility.score }}%</div>
+                    </div>
+                </div>
+
+                <div style="height: 6px; background: #e2e8f0;">
+                    <div style="height: 100%; background: var(--primary); width: {{ eligibility.score }}%; transition: width 1s ease;"></div>
+                </div>
+
+                <div class="report-content">
+                    
+                    {% if eligibility.matched_skills %}
+                        <div class="audit-section">
+                            <h4><i class="fas fa-check-circle" style="color:#10b981;"></i> Skillset Alignment</h4>
+                            <div class="audit-tags">
+                                {% for skill in eligibility.matched_skills %}
+                                    <span class="pill pill-success"><i class="fas fa-check"></i> {{ skill }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    {% if eligibility.missing_skills %}
+                        <div class="audit-section">
+                            <h4><i class="fas fa-exclamation-triangle" style="color:#f59e0b;"></i> Areas of Growth (Gaps)</h4>
+                            <div class="audit-tags">
+                                {% for skill in eligibility.missing_skills %}
+                                    <span class="pill pill-warning"><i class="fas fa-minus"></i> {{ skill }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    <div class="audit-section">
+                        <h4><i class="fas fa-code"></i> Full Technical Stack Audit</h4>
+                        <div class="tech-snippet">
+                            // Required Ecosystem Analysis <br>
+                            {{ eligibility.it_skills }}
+                        </div>
+                    </div>
+
+                    <div class="audit-section" style="margin-bottom:0;">
+                        <h4><i class="fas fa-info-circle"></i> Complete Job Profile</h4>
+                        <div style="background:#f8fafc; padding:25px; border-radius:12px; border-left:4px solid var(--primary); line-height:1.7; color:#334155;">
+                            {{ eligibility.job_description|linebreaks }}
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        {% else %}
+            <div class="empty-ui">
+                <i class="fas fa-shield-alt"></i>
+                <h3>Initiate Eligibility Scan</h3>
+                <p style="max-width:400px; margin:10px auto;">Enter the Job metadata on the left to compare your profile against the strict eligibility requirements.</p>
+            </div>
+        {% endif %}
+    </main>
+</div>
+
+{% endblock %}

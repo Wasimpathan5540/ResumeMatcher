@@ -1,0 +1,323 @@
+{% extends "matcher/base.html" %}
+
+{% block title %}Analytics Dashboard | Resume Matcher{% endblock %}
+
+{% block content %}
+
+<style>
+    /* Dashboard Specific Styles */
+    .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        margin-bottom: 30px;
+    }
+
+    .dashboard-title h1 {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: var(--text-main);
+        letter-spacing: -0.02em;
+    }
+
+    .dashboard-title p {
+        color: var(--text-muted);
+        font-size: 0.95rem;
+        margin-top: 4px;
+    }
+
+    /* --- STATS GRID --- */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 24px;
+        margin-bottom: 40px;
+    }
+
+    .stat-card {
+        background: var(--surface);
+        padding: 24px;
+        border-radius: 16px;
+        border: 1px solid #f1f5f9;
+        box-shadow: var(--shadow-md);
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-lg);
+    }
+
+    .stat-icon-box {
+        width: 56px;
+        height: 56px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+    }
+
+    /* specific colors for icons */
+    .icon-blue { background: #eff6ff; color: #3b82f6; } /* Blue */
+    .icon-teal { background: #f0fdfa; color: #14b8a6; } /* Teal */
+    
+    .stat-content h3 {
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+        margin-bottom: 4px;
+        font-weight: 600;
+    }
+
+    .stat-content .value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--text-main);
+        line-height: 1;
+    }
+
+    /* --- FILTERS --- */
+    .filter-bar {
+        margin-bottom: 20px;
+        display: flex;
+        gap: 8px;
+        background: #f1f5f9;
+        padding: 4px;
+        border-radius: 10px;
+        width: fit-content;
+    }
+
+    .filter-btn {
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: var(--text-muted);
+        transition: all 0.2s ease;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+    }
+
+    .filter-btn:hover {
+        color: var(--text-main);
+    }
+
+    .filter-btn.active {
+        background: white;
+        color: var(--primary);
+        font-weight: 600;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    /* --- TABLE DESIGN --- */
+    .table-card {
+        background: var(--surface);
+        border-radius: 16px;
+        border: 1px solid #f1f5f9;
+        box-shadow: var(--shadow-md);
+        overflow: hidden;
+    }
+
+    .table-responsive {
+        width: 100%;
+        overflow-x: auto;
+    }
+
+    .custom-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 600px; /* Forces scroll on mobile */
+    }
+
+    .custom-table th {
+        background: #f8fafc;
+        padding: 18px 24px;
+        text-align: left;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        letter-spacing: 0.05em;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .custom-table td {
+        padding: 20px 24px;
+        border-bottom: 1px solid #f1f5f9;
+        color: var(--text-main);
+        vertical-align: middle;
+        font-size: 0.95rem;
+        transition: background 0.1s;
+    }
+
+    .custom-table tr:hover td {
+        background: #f8fafc;
+    }
+
+    .custom-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    /* Badges & Tags */
+    .type-badge {
+        font-family: 'Inter', monospace;
+        background: #f1f5f9;
+        color: #475569;
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .score-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .score-high { background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }
+    .score-med  { background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
+    .score-low  { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+
+    .action-link {
+        color: var(--primary);
+        font-weight: 600;
+        font-size: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+    
+    .action-link:hover {
+        text-decoration: underline;
+    }
+
+    /* Empty State */
+    .empty-state {
+        padding: 60px 20px;
+        text-align: center;
+        color: var(--text-muted);
+    }
+    .empty-state i {
+        font-size: 3rem;
+        margin-bottom: 15px;
+        color: #cbd5e1;
+    }
+</style>
+
+<div class="dashboard-header">
+    <div class="dashboard-title">
+        <h1>Dashboard</h1>
+        <p>Overview of your resume scanning history and performance.</p>
+    </div>
+    <a href="{% url 'home' %}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> New Scan
+    </a>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon-box icon-blue">
+            <i class="fas fa-layer-group"></i>
+        </div>
+        <div class="stat-content">
+            <h3>Total Scans</h3>
+            <div class="value">{{ total_scans }}</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon-box icon-teal">
+            <i class="fas fa-chart-pie"></i>
+        </div>
+        <div class="stat-content">
+            <h3>Avg Match Score</h3>
+            <div class="value">
+                {% if avg_score %}{{ avg_score }}%{% else %}—{% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="table-card">
+    
+    <div style="padding: 24px; border-bottom: 1px solid #f1f5f9;">
+        <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:15px; align-items:center;">
+            <h2 style="font-size:1.1rem; font-weight:700;">Recent Activity</h2>
+            
+            <div class="filter-bar">
+                <a href="?filter=all" class="filter-btn {% if active_filter == 'all' %}active{% endif %}">All</a>
+                <a href="?filter=general" class="filter-btn {% if active_filter == 'general' %}active{% endif %}">General</a>
+                <a href="?filter=role" class="filter-btn {% if active_filter == 'role' %}active{% endif %}">Role AI</a>
+                <a href="?filter=jobcheck" class="filter-btn {% if active_filter == 'jobcheck' %}active{% endif %}">Job Check</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        {% if history %}
+            <table class="custom-table">
+                <thead>
+                    <tr>
+                        <th width="15%">Type</th>
+                        <th width="30%">Target Role</th>
+                        <th width="20%">Fit Score</th>
+                        <th width="20%">Date</th>
+                        <th width="15%" style="text-align:right;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in history %}
+                    <tr>
+                        <td>
+                            <span class="type-badge">{{ item.input_type }}</span>
+                        </td>
+                        <td>
+                            <strong style="color:var(--text-main);">{{ item.role|default:"—" }}</strong>
+                        </td>
+                        <td>
+                            {% if item.score >= 80 %}
+                                <span class="score-badge score-high"><i class="fas fa-check"></i> {{ item.score }}%</span>
+                            {% elif item.score >= 60 %}
+                                <span class="score-badge score-med"><i class="fas fa-minus"></i> {{ item.score }}%</span>
+                            {% else %}
+                                <span class="score-badge score-low"><i class="fas fa-times"></i> {{ item.score }}%</span>
+                            {% endif %}
+                        </td>
+                        <td style="color:var(--text-muted); font-size:0.9rem;">
+                            {{ item.timestamp|date:"M d, Y" }} <small style="opacity:0.7">{{ item.timestamp|date:"H:i" }}</small>
+                        </td>
+                        <td style="text-align:right;">
+                            {% if item.role %}
+                                <a href="{% url 'history_detail' item.id %}" class="action-link">
+                                    View <i class="fas fa-arrow-right" style="font-size:0.8em;"></i>
+                                </a>
+                            {% else %}
+                                <span style="color:#cbd5e1;">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="empty-state">
+                <i class="fas fa-folder-open"></i>
+                <h3>No Data Found</h3>
+                <p>You haven't performed any scans for this category yet.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}
