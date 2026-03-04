@@ -1,1 +1,1 @@
-web: gunicorn ResumeMatcher.wsgi
+web: gunicorn resume_matcher.wsgi
